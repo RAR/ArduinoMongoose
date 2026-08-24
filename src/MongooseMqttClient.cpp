@@ -175,7 +175,13 @@ bool MongooseMqttClient::subscribe(const char *topic)
     struct mg_mqtt_topic_expression s_topic_expr = {NULL, 0};
     s_topic_expr.topic = topic;
     DBUGF("Subscribing to '%s'", topic);
-    mg_mqtt_subscribe(_nc, &s_topic_expr, 1, 42);
+    // MQTT packet ids must be unique among in-flight requests (MQTT-2.3.1-2).
+    // With a constant id, brokers that dedupe in-flight packet ids by treating
+    // repeats as retransmissions (AWS IoT Core does) silently drop every
+    // subscription after the first when several SUBSCRIBEs race their SUBACKs.
+    static uint16_t message_id = 42;
+    if(0 == ++message_id) { message_id = 1; }
+    mg_mqtt_subscribe(_nc, &s_topic_expr, 1, message_id);
     return true;
   }
   return false;
