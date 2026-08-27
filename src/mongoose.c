@@ -5228,11 +5228,16 @@ void mg_ssl_if_conn_free(struct mg_connection *nc) {
     mbedtls_ssl_free(ctx->ssl);
     MG_FREE(ctx->ssl);
   }
+  /* Must run before ctx->conf is freed: it calls
+   * mbedtls_ssl_conf_ca_chain(ctx->conf, NULL, NULL), which writes into the
+   * config. With the old order that was a use-after-free that zeroed 8 bytes
+   * of freed heap on every connection torn down before the handshake
+   * completed (ca_cert is only cleared on handshake success). */
+  mg_ssl_if_mbed_free_certs_and_keys(ctx);
   if (ctx->conf != NULL) {
     mbedtls_ssl_config_free(ctx->conf);
     MG_FREE(ctx->conf);
   }
-  mg_ssl_if_mbed_free_certs_and_keys(ctx);
   mbuf_free(&ctx->cipher_suites);
   memset(ctx, 0, sizeof(*ctx));
   MG_FREE(ctx);
