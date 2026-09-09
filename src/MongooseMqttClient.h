@@ -109,10 +109,20 @@ class MongooseMqttClient
     _onClose = fnHandler;
   }
 
-  bool subscribe(const char *topic);
+  // qos is the MAXIMUM QoS the broker may deliver this subscription at,
+  // as a PLAIN level 0..2 - not the MG_MQTT_QOS() flags encoding publish()
+  // takes. MQTT puts the requested QoS in the SUBSCRIBE payload as a bare
+  // byte, so passing MG_MQTT_QOS(1) here would ask for QoS 2.
+  //
+  // It matters on brokers that honour it: AWS IoT Core delivers at
+  // min(publisher QoS, subscriber QoS), so a QoS 0 subscription silently
+  // turns an acknowledged QoS 1 publish into a fire-and-forget one, with
+  // no redelivery if the message is lost. The default stays 0 so existing
+  // callers are unchanged.
+  bool subscribe(const char *topic, uint8_t qos = 0);
 #ifdef ARDUINO
-  bool subscribe(String &topic) {
-    return subscribe(topic.c_str());
+  bool subscribe(String &topic, uint8_t qos = 0) {
+    return subscribe(topic.c_str(), qos);
   }
 #endif
 

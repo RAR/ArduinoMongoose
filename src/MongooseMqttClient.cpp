@@ -168,12 +168,13 @@ bool MongooseMqttClient::connect(MongooseMqttProtocol protocol, const char *serv
   return false;
 }
 
-bool MongooseMqttClient::subscribe(const char *topic)
+bool MongooseMqttClient::subscribe(const char *topic, uint8_t qos)
 {
   if(connected())
   {
     struct mg_mqtt_topic_expression s_topic_expr = {NULL, 0};
     s_topic_expr.topic = topic;
+    s_topic_expr.qos = qos;
     DBUGF("Subscribing to '%s'", topic);
     // MQTT packet ids must be unique among in-flight requests (MQTT-2.3.1-2).
     // A constant id makes concurrent SUBSCRIBEs look like retransmissions of
