@@ -11556,9 +11556,15 @@ void mg_send_dns_query(struct mg_connection *nc, const char *name,
   struct mg_dns_message *msg =
       (struct mg_dns_message *) MG_CALLOC(1, sizeof(*msg));
   struct mbuf pkt;
-  struct mg_dns_resource_record *rr = &msg->questions[0];
+  struct mg_dns_resource_record *rr;
 
   DBG(("%s %d", name, query_type));
+
+  if (msg == NULL) {
+    DBG(("out of memory"));
+    return; /* LCOV_EXCL_LINE */
+  }
+  rr = &msg->questions[0];
 
   mbuf_init(&pkt, 64 /* Start small, it'll grow as needed. */);
 
@@ -12018,6 +12024,12 @@ static void mg_resolve_async_eh(struct mg_connection *nc, int ev,
       break;
     case MG_EV_RECV:
       msg = (struct mg_dns_message *) MG_MALLOC(sizeof(*msg));
+      if (msg == NULL) {
+        DBG(("out of memory"));
+        req->err = MG_RESOLVE_NO_ANSWERS;
+        nc->flags |= MG_F_CLOSE_IMMEDIATELY;
+        break; /* LCOV_EXCL_LINE */
+      }
       if (mg_parse_dns(nc->recv_mbuf.buf, *(int *) data, msg) == 0 &&
           msg->num_answers > 0) {
         req->callback(msg, req->data, MG_RESOLVE_OK);
